@@ -90,7 +90,7 @@ public class CompanyService {
                     .formatted(longestChain));
         }
         if (ubos == 0) {
-            notes.add("No individual reaches the 25%% threshold through the recorded structure.");
+            notes.add("No individual reaches the 25% threshold through the recorded structure.");
         }
         if (notes.isEmpty()) {
             notes.add("No structural observations for this company.");

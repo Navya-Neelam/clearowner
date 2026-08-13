@@ -6,8 +6,8 @@ import org.springframework.boot.test.context.SpringBootTest;
 @SpringBootTest
 class BackendApplicationTests {
 
-	@Test
-	void contextLoads() {
-	}
-
+    /** The context must start without a reachable database, so the app can report the outage. */
+    @Test
+    void contextLoads() {
+    }
 }
