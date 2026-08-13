@@ -91,17 +91,20 @@ public class SeedDataFactory {
             "Andersson", "Brennan", "Cioffi", "Delacroix", "Espinoza", "Fitzgerald",
     };
 
+    /** Index-aligned with JURISDICTIONS, so an address city always matches its country. */
     private static final String[] CITIES = {
             "London", "Dublin", "Frankfurt", "Paris", "Amsterdam", "New York", "Toronto",
             "Mumbai", "Singapore", "Dubai", "Zurich", "Luxembourg", "Limassol", "Valletta",
             "Road Town", "George Town", "Panama City", "Victoria", "Belize City", "Saint Helier",
     };
 
+    /** Also index-aligned with JURISDICTIONS - a plausible street for each capital. */
     private static final String[] STREETS = {
-            "Harbour Row", "Fenchurch Street", "Alte Gasse", "Rue Lafayette", "Keizersgracht",
+            "Fenchurch Street", "Dame Street", "Alte Gasse", "Rue Lafayette", "Keizersgracht",
             "Broad Street", "Bay Street", "Marine Drive", "Raffles Quay", "Sheikh Zayed Road",
             "Bahnhofstrasse", "Boulevard Royal", "Arch. Makariou", "Republic Street",
             "Waterfront Drive", "Elgin Avenue", "Calle 50", "Independence Avenue",
+            "Albert Street", "The Esplanade",
     };
 
     private static final String[] ROLES = {
@@ -151,13 +154,16 @@ public class SeedDataFactory {
     private List<SeedData.Address> buildAddresses(Random rnd, List<String> codes) {
         List<SeedData.Address> out = new ArrayList<>();
         for (int i = 0; i < ADDRESSES; i++) {
-            String city = CITIES[rnd.nextInt(CITIES.length)];
+            // Pick the jurisdiction first, then its city, so the two always agree.
+            int jurisdiction = rnd.nextInt(codes.size());
+            String city = CITIES[jurisdiction];
             out.add(new SeedData.Address(
                     "ADDR-%04d".formatted(i + 1),
-                    "%d %s".formatted(1 + rnd.nextInt(240), STREETS[rnd.nextInt(STREETS.length)]),
+                    "%d %s".formatted(1 + rnd.nextInt(240), STREETS[jurisdiction]),
                     city,
-                    "%s%d".formatted(city.substring(0, 2).toUpperCase(), 10000 + rnd.nextInt(89999)),
-                    codes.get(rnd.nextInt(codes.size()))));
+                    "%s%d".formatted(city.replace(" ", "").substring(0, 2).toUpperCase(),
+                            10000 + rnd.nextInt(89999)),
+                    codes.get(jurisdiction)));
         }
         return out;
     }
