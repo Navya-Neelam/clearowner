@@ -3,8 +3,10 @@ package ai.clearowner.seed;
 import org.springframework.stereotype.Component;
 
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Random;
 import java.util.Set;
 
@@ -73,7 +75,33 @@ public class SeedDataFactory {
             "Pharma", "Agri", "Marine", "Metals", "Freight", "Chemicals",
     };
 
-    private static final String[] CO_SUFFIX = {"Ltd", "PLC", "GmbH", "S.a.r.l", "Pte Ltd", "Inc", "BV", "SA"};
+    /**
+     * Legal-form suffixes are jurisdiction-specific in reality - a GmbH is not
+     * registered in Panama - so each jurisdiction gets its own set, index-aligned
+     * with JURISDICTIONS.
+     */
+    private static final String[][] CO_SUFFIX_BY_JURISDICTION = {
+            {"Ltd", "PLC"},           // GB
+            {"Ltd", "DAC"},           // IE
+            {"GmbH", "AG"},           // DE
+            {"SA", "SARL"},           // FR
+            {"BV", "NV"},             // NL
+            {"Inc", "LLC"},           // US
+            {"Inc", "Corp"},          // CA
+            {"Pvt Ltd", "Ltd"},       // IN
+            {"Pte Ltd"},              // SG
+            {"LLC", "FZE"},           // AE
+            {"AG", "GmbH"},           // CH
+            {"S.a.r.l", "SA"},        // LU
+            {"Ltd"},                  // CY
+            {"Ltd"},                  // MT
+            {"Ltd", "Corp"},          // VG
+            {"Ltd"},                  // KY
+            {"SA"},                   // PA
+            {"Ltd"},                  // SC
+            {"Ltd"},                  // BZ
+            {"Ltd"},                  // JE
+    };
 
     private static final String[] FIRST_NAMES = {
             "Amara", "Bjorn", "Carmen", "Dmitri", "Elena", "Farid", "Greta", "Hassan",
@@ -125,7 +153,18 @@ public class SeedDataFactory {
 
         List<SeedData.Address> addresses = buildAddresses(rnd, codes);
         List<SeedData.Person> people = buildPeople(rnd, codes);
-        List<List<SeedData.Company>> tiers = buildCompanies(rnd, codes, havenCodes, addresses);
+
+        // Companies must be registered at an address in their own jurisdiction, so
+        // group the addresses by country before assigning them.
+        Map<String, List<SeedData.Address>> addressesByJurisdiction = new LinkedHashMap<>();
+        for (SeedData.Address address : addresses) {
+            addressesByJurisdiction
+                    .computeIfAbsent(address.jurisdictionCode(), k -> new ArrayList<>())
+                    .add(address);
+        }
+
+        List<List<SeedData.Company>> tiers =
+                buildCompanies(rnd, codes, havenCodes, addressesByJurisdiction);
 
         List<SeedData.Company> companies = new ArrayList<>();
         tiers.forEach(companies::addAll);
@@ -155,7 +194,8 @@ public class SeedDataFactory {
         List<SeedData.Address> out = new ArrayList<>();
         for (int i = 0; i < ADDRESSES; i++) {
             // Pick the jurisdiction first, then its city, so the two always agree.
-            int jurisdiction = rnd.nextInt(codes.size());
+            // The first pass round-robins so every jurisdiction has addresses to offer.
+            int jurisdiction = i < codes.size() ? i : rnd.nextInt(codes.size());
             String city = CITIES[jurisdiction];
             out.add(new SeedData.Address(
                     "ADDR-%04d".formatted(i + 1),
@@ -192,11 +232,14 @@ public class SeedDataFactory {
      * a secrecy jurisdiction, which is what makes the jurisdiction-risk query
      * produce a meaningful answer rather than noise.
      */
-    private List<List<SeedData.Company>> buildCompanies(Random rnd, List<String> codes,
-                                                        List<String> havenCodes,
-                                                        List<SeedData.Address> addresses) {
-        // A few addresses act as company mills hosting many registrations.
-        List<SeedData.Address> mills = addresses.subList(0, 8);
+    private List<List<SeedData.Company>> buildCompanies(
+            Random rnd, List<String> codes, List<String> havenCodes,
+            Map<String, List<SeedData.Address>> addressesByJurisdiction) {
+
+        // Within each jurisdiction the first address acts as a company mill, so
+        // clusters form at a real address in the right country.
+        Map<String, SeedData.Address> millByJurisdiction = new LinkedHashMap<>();
+        addressesByJurisdiction.forEach((code, list) -> millByJurisdiction.put(code, list.get(0)));
 
         List<List<SeedData.Company>> tiers = new ArrayList<>();
         Set<String> usedNames = new LinkedHashSet<>();
@@ -206,23 +249,29 @@ public class SeedDataFactory {
             List<SeedData.Company> tierCompanies = new ArrayList<>();
             for (int i = 0; i < TIER_SIZES[tier]; i++) {
                 seq++;
+                boolean holding = tier > 0;
+
+                // Jurisdiction is chosen first because it decides both the legal-form
+                // suffix in the name and the pool of addresses available.
+                String jurisdiction = holding && rnd.nextInt(100) < 55
+                        ? havenCodes.get(rnd.nextInt(havenCodes.size()))
+                        : codes.get(rnd.nextInt(codes.size()));
+
+                String[] suffixes = CO_SUFFIX_BY_JURISDICTION[codes.indexOf(jurisdiction)];
                 String name;
                 do {
                     name = "%s %s %s".formatted(
                             CO_FIRST[rnd.nextInt(CO_FIRST.length)],
                             CO_SECOND[rnd.nextInt(CO_SECOND.length)],
-                            CO_SUFFIX[rnd.nextInt(CO_SUFFIX.length)]);
+                            suffixes[rnd.nextInt(suffixes.length)]);
                 } while (!usedNames.add(name));
 
-                boolean holding = tier > 0;
-                String jurisdiction = holding && rnd.nextInt(100) < 55
-                        ? havenCodes.get(rnd.nextInt(havenCodes.size()))
-                        : codes.get(rnd.nextInt(codes.size()));
-
-                // Holding companies cluster into the mill addresses; operating ones rarely do.
-                SeedData.Address address = (holding && rnd.nextInt(100) < 45)
-                        ? mills.get(rnd.nextInt(mills.size()))
-                        : addresses.get(rnd.nextInt(addresses.size()));
+                // Holding companies cluster into their jurisdiction's mill address;
+                // operating ones take an ordinary address in the same country.
+                List<SeedData.Address> local = addressesByJurisdiction.get(jurisdiction);
+                SeedData.Address address = (holding && rnd.nextInt(100) < 55)
+                        ? millByJurisdiction.get(jurisdiction)
+                        : local.get(rnd.nextInt(local.size()));
 
                 tierCompanies.add(new SeedData.Company(
                         "CO-%04d".formatted(seq),

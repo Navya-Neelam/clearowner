@@ -1,0 +1,135 @@
+<div class="page">
+  <div class="page-head">
+    <span class="eyebrow">Portfolio-wide patterns</span>
+    <h1>Structural insights</h1>
+    <p class="muted">
+      Patterns that only appear when ownership is treated as a network. Each one describes the
+      shape of a structure — none of them is a finding of wrongdoing.
+    </p>
+  </div>
+
+  <!-- ── Circular ownership ───────────────────────────────────────────── -->
+  <section class="card">
+    <div class="card-head">
+      <h2><span class="material-symbols-outlined amber">sync_problem</span> Circular ownership</h2>
+      <p class="muted">
+        Closed loops where each company owns the next and the last owns the first. No individual
+        sits at the top, so the chain never resolves to a natural person.
+      </p>
+    </div>
+    @let c = circular$ | async;
+    @if (c?.loading) {
+      <co-skeleton [count]="4" />
+    } @else if (c?.error) {
+      <co-error [message]="c!.error!" (retry)="reloadCircular()" />
+    } @else if ((c?.data?.length ?? 0) === 0) {
+      <co-empty icon="done_all" title="No circular structures" message="No closed ownership loops in this dataset." />
+    } @else {
+      <div class="card-body rings">
+        @for (ring of c!.data!; track $index) {
+          <div class="ring">
+            <span class="chip chip-amber">{{ ring.length }}-company loop</span>
+            <div class="chain">
+              @for (m of ring.members; track m.companyId; let last = $last) {
+                <a [routerLink]="['/companies', m.companyId]">{{ m.name }}</a>
+                <span class="arrow">
+                  <span class="material-symbols-outlined">arrow_right_alt</span>
+                  <em>{{ m.percentageOfNext }}%</em>
+                </span>
+              }
+              <span class="back">back to {{ ring.members[0].name }}</span>
+            </div>
+          </div>
+        }
+      </div>
+    }
+  </section>
+
+  <!-- ── Shared addresses ─────────────────────────────────────────────── -->
+  <section class="card" style="margin-top:16px">
+    <div class="card-head">
+      <h2><span class="material-symbols-outlined brand">location_on</span> Shared registered offices</h2>
+      <p class="muted">
+        Address is modelled as its own node rather than a field on the company, so "who else is
+        registered here" is a traversal rather than a text match.
+      </p>
+    </div>
+    @let a = addresses$ | async;
+    @if (a?.loading) {
+      <co-skeleton [count]="5" />
+    } @else if (a?.error) {
+      <co-error [message]="a!.error!" (retry)="reloadAddresses()" />
+    } @else if ((a?.data?.length ?? 0) === 0) {
+      <co-empty icon="location_off" title="No shared addresses" message="No address hosts enough companies to form a cluster." />
+    } @else {
+      <div class="table-wrap">
+        <table class="data">
+          <thead>
+            <tr><th>Address</th><th>Jurisdiction</th><th class="num">Companies</th><th>Registered here</th></tr>
+          </thead>
+          <tbody>
+            @for (x of a!.data!; track x.addressId) {
+              <tr>
+                <td>
+                  <div class="stack">
+                    <span style="font-weight:500">{{ x.line }}</span>
+                    <span class="small muted">{{ x.city }}</span>
+                  </div>
+                </td>
+                <td class="small muted">{{ x.jurisdictionName }}</td>
+                <td class="num"><span class="chip chip-amber">{{ x.companyCount }}</span></td>
+                <td>
+                  <div class="pills">
+                    @for (co of x.companies.slice(0, 4); track co.companyId) {
+                      <a class="pill" [routerLink]="['/companies', co.companyId]">{{ co.name }}</a>
+                    }
+                    @if (x.companies.length > 4) {
+                      <span class="pill muted">+{{ x.companies.length - 4 }} more</span>
+                    }
+                  </div>
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    }
+  </section>
+
+  <!-- ── Widest reach ─────────────────────────────────────────────────── -->
+  <section class="card" style="margin-top:16px">
+    <div class="card-head">
+      <h2><span class="material-symbols-outlined violet">hub</span> Widest-reaching individuals</h2>
+      <p class="muted">
+        People whose ownership, followed through intermediaries, touches the largest number of
+        companies. Reach is counted over distinct companies, not paths.
+      </p>
+    </div>
+    @let t = controllers$ | async;
+    @if (t?.loading) {
+      <co-skeleton [count]="5" />
+    } @else if (t?.error) {
+      <co-error [message]="t!.error!" (retry)="reloadControllers()" />
+    } @else if ((t?.data?.length ?? 0) === 0) {
+      <co-empty icon="person_off" title="No individuals meet this reach" message="" />
+    } @else {
+      <div class="table-wrap">
+        <table class="data">
+          <thead><tr><th>Individual</th><th class="num">Companies reached</th><th class="num">Deepest chain</th></tr></thead>
+          <tbody>
+            @for (x of t!.data!; track x.personId) {
+              <tr>
+                <td>
+                  <a [routerLink]="['/persons', x.personId]">{{ x.name }}</a>
+                  @if (x.pep) { <span class="chip chip-violet" style="margin-left:6px">PEP</span> }
+                </td>
+                <td class="num">{{ x.companiesReached | number }}</td>
+                <td class="num muted">{{ x.maxDepth }} hops</td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    }
+  </section>
+</div>

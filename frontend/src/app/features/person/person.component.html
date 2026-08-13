@@ -1,0 +1,105 @@
+<div class="page">
+  @let p = person$ | async;
+
+  @if (p?.loading) {
+    <div class="card"><co-skeleton [count]="3" [height]="20" /></div>
+  } @else if (p?.error) {
+    <div class="card"><co-error title="Person unavailable" [message]="p!.error!" [retryable]="false" /></div>
+  } @else if (p?.data; as person) {
+
+    <header class="card">
+      <div class="card-body">
+        <span class="eyebrow">Individual</span>
+        <h1>{{ person.name }}</h1>
+        <div class="chips">
+          <span class="chip chip-neutral mono">{{ person.personId }}</span>
+          @if (person.pep) {
+            <span class="chip chip-violet">
+              <span class="material-symbols-outlined">gavel</span> Politically exposed person
+            </span>
+          }
+          <span class="chip chip-neutral">Born {{ person.birthYear }}</span>
+          <span class="chip chip-neutral">{{ person.nationalityName }}</span>
+        </div>
+        <p class="muted small">
+          Holds {{ person.directHoldingCount }} direct shareholding{{ person.directHoldingCount === 1 ? '' : 's' }}
+          and {{ person.directorshipCount }} directorship{{ person.directorshipCount === 1 ? '' : 's' }}.
+        </p>
+      </div>
+    </header>
+
+    <div class="grid grid-2" style="margin-top:16px">
+      <section class="card">
+        <div class="card-head">
+          <h2>Companies controlled</h2>
+          <p class="muted">Effective stake, following ownership through intermediaries.</p>
+        </div>
+        @let h = holdings$ | async;
+        @if (h?.loading) {
+          <co-skeleton [count]="5" />
+        } @else if (h?.error) {
+          <co-error [message]="h!.error!" [retryable]="false" />
+        } @else if ((h?.data?.length ?? 0) === 0) {
+          <co-empty icon="apartment" title="No shareholdings"
+                    message="This person holds no ownership stake in the dataset." />
+        } @else {
+          <div class="table-wrap">
+            <table class="data">
+              <thead><tr><th>Company</th><th class="num">Depth</th><th class="num">Effective</th></tr></thead>
+              <tbody>
+                @for (x of h!.data!; track x.companyId) {
+                  <tr>
+                    <td>
+                      <div class="stack">
+                        <a [routerLink]="['/companies', x.companyId]">{{ x.name }}</a>
+                        <span class="small muted">
+                          {{ x.jurisdictionName }}
+                          @if (x.secrecyHaven) { · low disclosure }
+                        </span>
+                      </div>
+                    </td>
+                    <td class="num muted">{{ x.shortestPathLength }}</td>
+                    <td class="num"><co-pct [value]="x.effectivePercentage" /></td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          </div>
+        }
+      </section>
+
+      <section class="card">
+        <div class="card-head">
+          <h2>Board appointments</h2>
+          <p class="muted">A seat on the board is control without a shareholding.</p>
+        </div>
+        @let d = directorships$ | async;
+        @if (d?.loading) {
+          <co-skeleton [count]="5" />
+        } @else if (d?.error) {
+          <co-error [message]="d!.error!" [retryable]="false" />
+        } @else if ((d?.data?.length ?? 0) === 0) {
+          <co-empty icon="badge" title="No directorships" message="" />
+        } @else {
+          <div class="table-wrap">
+            <table class="data">
+              <thead><tr><th>Company</th><th>Role</th><th class="num">Appointed</th></tr></thead>
+              <tbody>
+                @for (x of d!.data!; track x.companyId + x.role) {
+                  <tr>
+                    <td>
+                      <a [routerLink]="['/companies', x.companyId]">{{ x.companyName }}</a>
+                      @if (!x.active) { <span class="chip chip-neutral" style="margin-left:6px">Resigned</span> }
+                    </td>
+                    <td class="small muted">{{ x.role }}</td>
+                    <td class="num small muted">{{ x.appointedOn }}</td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          </div>
+        }
+      </section>
+    </div>
+  }
+</div>

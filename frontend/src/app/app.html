@@ -1,0 +1,39 @@
+<header class="topbar">
+  <div class="topbar-inner">
+    <a class="brand" routerLink="/">
+      <span class="material-symbols-outlined logo">account_tree</span>
+      <span class="brand-text">
+        <strong>ClearOwner</strong>
+        <em>Beneficial ownership intelligence</em>
+      </span>
+    </a>
+
+    <nav class="nav">
+      <a routerLink="/dashboard" routerLinkActive="on">Dashboard</a>
+      <a routerLink="/explore" routerLinkActive="on">Explore</a>
+      <a routerLink="/insights" routerLinkActive="on">Insights</a>
+    </nav>
+
+    <div class="search-slot">
+      <co-search />
+    </div>
+  </div>
+</header>
+
+@if (dbReachable() === false) {
+  <div class="offline" role="status">
+    <span class="material-symbols-outlined">cloud_off</span>
+    <span>
+      The graph database is not responding. Data on this page may be unavailable — if the API
+      was idle it can take up to a minute to wake up.
+    </span>
+  </div>
+}
+
+<main>
+  <router-outlet />
+</main>
+
+<footer class="foot">
+  <span>ClearOwner — synthetic dataset for demonstration. Not a source of legal or regulatory truth.</span>
+</footer>

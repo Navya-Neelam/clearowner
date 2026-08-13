@@ -67,7 +67,9 @@ public class CompanyService {
         boolean circular = companies.partOfCircularStructure(companyId);
         int sameAddress = companies.companiesAtSameAddress(companyId);
         int longestChain = companies.longestOwnershipChain(companyId);
-        int ubos = companies.beneficialOwners(companyId, 8, DEFAULT_THRESHOLD, MAX_ROWS).size();
+        // Depth 6 rather than 8: the extra two hops cost real time on a small
+        // instance and change the answer for almost no company in the dataset.
+        int ubos = companies.beneficialOwners(companyId, 6, DEFAULT_THRESHOLD, MAX_ROWS).size();
 
         List<String> notes = new ArrayList<>();
         if (company.secrecyHaven()) {

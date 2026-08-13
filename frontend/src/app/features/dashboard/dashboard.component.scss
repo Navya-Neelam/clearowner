@@ -1,0 +1,20 @@
+.page-head p { max-width: 68ch; margin-top: 8px; }
+
+.stat.accent .value { font-size: 22px; }
+.stat.accent .label { max-width: 24ch; }
+
+.ic {
+  font-size: 22px;
+  padding: 8px;
+  border-radius: 10px;
+  flex: none;
+}
+.ic.violet { color: var(--violet-700); background: var(--violet-50); }
+.ic.amber { color: var(--amber-700); background: var(--amber-50); }
+.ic.brand { color: var(--brand-700); background: var(--brand-50); }
+
+.cta { margin-top: 16px; background: linear-gradient(180deg, #fff, var(--brand-50)); }
+
+@media (max-width: 720px) {
+  .cta .row-between { flex-direction: column; align-items: flex-start; }
+}

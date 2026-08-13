@@ -1,0 +1,163 @@
+<div class="page">
+  <div class="page-head">
+    <span class="eyebrow">Corporate ownership register</span>
+    <h1>Who really owns these companies?</h1>
+    <p class="muted">
+      Company registers list shareholders one layer deep. When those shareholders are themselves
+      companies, the individual in control disappears behind the structure. ClearOwner follows the
+      chain all the way down.
+    </p>
+  </div>
+
+  @let s = state$ | async;
+
+  @if (s?.loading) {
+    <div class="grid grid-4">
+      @for (i of [1, 2, 3, 4]; track i) {
+        <div class="stat"><div class="skeleton" style="height:30px;width:70%"></div>
+          <div class="skeleton" style="height:11px;width:52%;margin-top:9px"></div></div>
+      }
+    </div>
+    <div class="grid grid-2" style="margin-top:16px">
+      <div class="card"><co-skeleton [count]="5" /></div>
+      <div class="card"><co-skeleton [count]="5" /></div>
+    </div>
+  } @else if (s?.error) {
+    <div class="card">
+      <co-error [message]="s!.error!" (retry)="reload()" />
+    </div>
+  } @else if (s?.data; as d) {
+
+    <div class="grid grid-4">
+      <div class="stat">
+        <div class="value">{{ d.companies | number }}</div>
+        <div class="label">Companies</div>
+      </div>
+      <div class="stat">
+        <div class="value">{{ d.people | number }}</div>
+        <div class="label">Individuals</div>
+      </div>
+      <div class="stat">
+        <div class="value">{{ d.ownershipLinks | number }}</div>
+        <div class="label">Ownership links</div>
+      </div>
+      <div class="stat">
+        <div class="value">{{ d.jurisdictions | number }}</div>
+        <div class="label">Jurisdictions</div>
+      </div>
+    </div>
+
+    <div class="grid grid-3" style="margin-top:16px">
+      <div class="stat accent">
+        <div class="row">
+          <span class="material-symbols-outlined ic violet">visibility_off</span>
+          <div>
+            <div class="value">{{ d.secrecyHavenCompanies | number }}</div>
+            <div class="label">Registered in low-disclosure jurisdictions</div>
+          </div>
+        </div>
+      </div>
+      <div class="stat accent">
+        <div class="row">
+          <span class="material-symbols-outlined ic amber">sync_problem</span>
+          <div>
+            <div class="value">{{ d.circularStructures | number }}</div>
+            <div class="label">Circular ownership structures</div>
+          </div>
+        </div>
+      </div>
+      <div class="stat accent">
+        <div class="row">
+          <span class="material-symbols-outlined ic brand">badge</span>
+          <div>
+            <div class="value">{{ d.directorships | number }}</div>
+            <div class="label">Directorships recorded</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="grid grid-2" style="margin-top:16px">
+      <section class="card">
+        <div class="card-head">
+          <div class="row-between">
+            <div>
+              <h2>Shared registered offices</h2>
+              <p class="muted">One address, many companies — a common shell pattern.</p>
+            </div>
+            <a routerLink="/insights" class="small">View all</a>
+          </div>
+        </div>
+        <div class="card-body-flush table-wrap">
+          <table class="data">
+            <thead>
+              <tr><th>Address</th><th>Jurisdiction</th><th class="num">Companies</th></tr>
+            </thead>
+            <tbody>
+              @for (a of d.topAddressClusters; track a.addressId) {
+                <tr>
+                  <td>
+                    <div class="stack">
+                      <span style="font-weight:500">{{ a.line }}</span>
+                      <span class="small muted">{{ a.city }}</span>
+                    </div>
+                  </td>
+                  <td class="small muted">{{ a.jurisdictionName }}</td>
+                  <td class="num"><span class="chip chip-amber">{{ a.companyCount }}</span></td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <section class="card">
+        <div class="card-head">
+          <div class="row-between">
+            <div>
+              <h2>Widest-reaching individuals</h2>
+              <p class="muted">People whose ownership touches the most companies.</p>
+            </div>
+            <a routerLink="/insights" class="small">View all</a>
+          </div>
+        </div>
+        <div class="card-body-flush table-wrap">
+          <table class="data">
+            <thead>
+              <tr><th>Individual</th><th class="num">Companies</th><th class="num">Depth</th></tr>
+            </thead>
+            <tbody>
+              @for (c of d.topControllers; track c.personId) {
+                <tr>
+                  <td>
+                    <a [routerLink]="['/persons', c.personId]">{{ c.name }}</a>
+                    @if (c.pep) { <span class="chip chip-violet" style="margin-left:6px">PEP</span> }
+                  </td>
+                  <td class="num">{{ c.companiesReached | number }}</td>
+                  <td class="num muted">{{ c.maxDepth }} hops</td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      </section>
+    </div>
+
+    <section class="card cta">
+      <div class="card-body">
+        <div class="row-between">
+          <div class="stack">
+            <h2>Start with a company</h2>
+            <p class="muted">
+              Search any company above, or open the explorer to walk an ownership structure visually.
+            </p>
+          </div>
+          <a routerLink="/explore" class="btn active">
+            <span class="material-symbols-outlined">account_tree</span> Open explorer
+          </a>
+        </div>
+      </div>
+    </section>
+
+  }
+</div>

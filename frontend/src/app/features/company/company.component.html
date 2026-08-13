@@ -1,0 +1,221 @@
+<div class="page">
+
+  @let c = company$ | async;
+
+  @if (c?.loading) {
+    <div class="card"><co-skeleton [count]="3" [height]="20" /></div>
+  } @else if (c?.error) {
+    <div class="card"><co-error title="Company unavailable" [message]="c!.error!" [retryable]="false" /></div>
+  } @else if (c?.data; as co) {
+
+    <header class="hero card">
+      <div class="card-body">
+        <span class="eyebrow">Company</span>
+        <h1>{{ co.name }}</h1>
+        <div class="chips">
+          <span class="chip chip-neutral mono">{{ co.companyId }}</span>
+          <span class="chip" [class.chip-green]="co.status === 'ACTIVE'"
+                [class.chip-neutral]="co.status !== 'ACTIVE'">{{ co.status | titlecase }}</span>
+          <span class="chip chip-neutral">{{ co.companyType }}</span>
+          <span class="chip" [class.chip-violet]="co.secrecyHaven" [class.chip-neutral]="!co.secrecyHaven">
+            @if (co.secrecyHaven) { <span class="material-symbols-outlined">visibility_off</span> }
+            {{ co.jurisdictionName }}
+          </span>
+        </div>
+        <div class="facts">
+          <div class="fact">
+            <span class="eyebrow">Incorporated</span>
+            <span>{{ co.incorporationDate }}</span>
+          </div>
+          <div class="fact">
+            <span class="eyebrow">Registered office</span>
+            <span>{{ co.addressLine }}, {{ co.addressCity }}</span>
+          </div>
+          <div class="fact">
+            <span class="eyebrow">Structure</span>
+            <span>
+              {{ co.directOwnerCount }} shareholder{{ co.directOwnerCount === 1 ? '' : 's' }} ·
+              {{ co.subsidiaryCount }} subsidiar{{ co.subsidiaryCount === 1 ? 'y' : 'ies' }} ·
+              {{ co.directorCount }} director{{ co.directorCount === 1 ? '' : 's' }}
+            </span>
+          </div>
+        </div>
+        <a class="btn active" [routerLink]="['/explore']" [queryParams]="{ company: co.companyId }">
+          <span class="material-symbols-outlined">account_tree</span> View ownership graph
+        </a>
+      </div>
+    </header>
+
+    <!-- ── The X-Ray: register vs reality, side by side ────────────────── -->
+    <h2 class="section-title">Ownership X-Ray</h2>
+    <p class="muted section-sub">
+      The left column is what the register records. The right column follows every ownership path
+      to the individuals behind it, multiplying the stake at each step.
+    </p>
+
+    <div class="xray">
+      <section class="card">
+        <div class="card-head">
+          <h2><span class="material-symbols-outlined dim">description</span> What the register says</h2>
+          <p class="muted">Shareholders recorded directly against this company.</p>
+        </div>
+        @let d = directOwners$ | async;
+        @if (d?.loading) {
+          <co-skeleton [count]="4" />
+        } @else if (d?.error) {
+          <co-error [message]="d!.error!" [retryable]="false" />
+        } @else if ((d?.data?.length ?? 0) === 0) {
+          <co-empty icon="description" title="No recorded shareholders"
+                    message="This company has no ownership records in the dataset." />
+        } @else {
+          <div class="table-wrap">
+            <table class="data">
+              <thead><tr><th>Shareholder</th><th>Class</th><th class="num">Stake</th></tr></thead>
+              <tbody>
+                @for (o of d!.data!; track o.type + o.id) {
+                  <tr>
+                    <td>
+                      <div class="row">
+                        <span class="material-symbols-outlined tiny">
+                          {{ o.type === 'Company' ? 'apartment' : 'person' }}
+                        </span>
+                        @if (o.type === 'Company') {
+                          <a [routerLink]="['/companies', o.id]">{{ o.name }}</a>
+                        } @else {
+                          <a [routerLink]="['/persons', o.id]">{{ o.name }}</a>
+                        }
+                      </div>
+                    </td>
+                    <td class="small muted">{{ o.shareClass }}</td>
+                    <td class="num"><co-pct [value]="o.percentage" /></td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          </div>
+        }
+      </section>
+
+      <section class="card highlight">
+        <div class="card-head">
+          <div class="row-between">
+            <div>
+              <h2><span class="material-symbols-outlined accent">person_search</span> Who actually controls it</h2>
+              <p class="muted">Individuals, with stakes summed across every ownership path.</p>
+            </div>
+          </div>
+          <div class="thresholds">
+            <span class="eyebrow">Threshold</span>
+            @let t = selectedThreshold$ | async;
+            @for (option of thresholds; track option) {
+              <button class="btn" [class.active]="t === option" (click)="setThreshold(option)">
+                {{ option }}%
+              </button>
+            }
+          </div>
+        </div>
+
+        @let b = beneficialOwners$ | async;
+        @if (b?.loading) {
+          <co-skeleton [count]="4" />
+        } @else if (b?.error) {
+          <co-error [message]="b!.error!" [retryable]="false" />
+        } @else if ((b?.data?.length ?? 0) === 0) {
+          <co-empty icon="person_off" title="No individual reaches this threshold"
+                    message="Nobody holds a stake this large through the recorded structure. Try lowering the threshold." />
+        } @else {
+          <div class="table-wrap">
+            <table class="data">
+              <thead>
+                <tr><th>Individual</th><th class="num">Routes</th><th class="num">Depth</th><th class="num">Effective</th></tr>
+              </thead>
+              <tbody>
+                @for (o of b!.data!; track o.personId) {
+                  <tr>
+                    <td>
+                      <div class="row">
+                        <span class="material-symbols-outlined tiny">person</span>
+                        <a [routerLink]="['/persons', o.personId]">{{ o.name }}</a>
+                        @if (o.pep) { <span class="chip chip-violet">PEP</span> }
+                      </div>
+                    </td>
+                    <td class="num">
+                      @if (o.routes > 1) {
+                        <span class="chip chip-amber" title="Reached through more than one ownership path">
+                          {{ o.routes }}
+                        </span>
+                      } @else {
+                        <span class="muted">1</span>
+                      }
+                    </td>
+                    <td class="num muted">{{ o.shortestPathLength }} hop{{ o.shortestPathLength === 1 ? '' : 's' }}</td>
+                    <td class="num"><co-pct [value]="o.effectivePercentage" /></td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          </div>
+        }
+      </section>
+    </div>
+
+    <!-- ── Structural observations ─────────────────────────────────────── -->
+    <div class="grid grid-2" style="margin-top:16px">
+      <section class="card">
+        <div class="card-head">
+          <h2>Structural observations</h2>
+          <p class="muted">Shapes in the ownership graph. Not findings of wrongdoing.</p>
+        </div>
+        @let sg = signals$ | async;
+        @if (sg?.loading) {
+          <co-skeleton [count]="4" />
+        } @else if (sg?.error) {
+          <co-error [message]="sg!.error!" [retryable]="false" />
+        } @else if (sg?.data; as r) {
+          <div class="card-body notes">
+            @for (note of r.notes; track note) {
+              <div class="note">
+                <span class="material-symbols-outlined">info</span>
+                <span>{{ note }}</span>
+              </div>
+            }
+          </div>
+        }
+      </section>
+
+      <section class="card">
+        <div class="card-head">
+          <h2>Directors</h2>
+          <p class="muted">Control can run through the board as well as the share register.</p>
+        </div>
+        @let dir = directors$ | async;
+        @if (dir?.loading) {
+          <co-skeleton [count]="3" />
+        } @else if (dir?.error) {
+          <co-error [message]="dir!.error!" [retryable]="false" />
+        } @else if ((dir?.data?.length ?? 0) === 0) {
+          <co-empty icon="badge" title="No directors recorded" message="" />
+        } @else {
+          <div class="table-wrap">
+            <table class="data">
+              <thead><tr><th>Name</th><th>Role</th><th class="num">Appointed</th></tr></thead>
+              <tbody>
+                @for (p of dir!.data!; track p.personId + p.role) {
+                  <tr>
+                    <td>
+                      <a [routerLink]="['/persons', p.personId]">{{ p.personName }}</a>
+                      @if (!p.active) { <span class="chip chip-neutral" style="margin-left:6px">Resigned</span> }
+                    </td>
+                    <td class="small muted">{{ p.role }}</td>
+                    <td class="num small muted">{{ p.appointedOn }}</td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          </div>
+        }
+      </section>
+    </div>
+
+  }
+</div>

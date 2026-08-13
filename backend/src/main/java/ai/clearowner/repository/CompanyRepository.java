@@ -227,7 +227,7 @@ public class CompanyRepository {
 
     public int longestOwnershipChain(String companyId) {
         String cypher = """
-                MATCH path = (p:Person)-[:OWNS*1..8]->(c:Company {companyId: $companyId})
+                MATCH path = (p:Person)-[:OWNS*1..6]->(c:Company {companyId: $companyId})
                 RETURN max(length(path)) AS longest
                 """;
         try (var session = driver.session()) {

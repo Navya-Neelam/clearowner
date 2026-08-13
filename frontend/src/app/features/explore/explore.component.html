@@ -1,0 +1,101 @@
+<div class="page">
+  <div class="page-head">
+    <span class="eyebrow">Explorer</span>
+    <h1>Ownership graph</h1>
+    <p class="muted">
+      Owners sit above the companies they own. Click any company to re-centre the graph on it,
+      or any individual to open their profile.
+    </p>
+  </div>
+
+  @let id = selectedId$ | async;
+
+  @if (!id) {
+    <section class="card">
+      <div class="card-body">
+        <co-empty
+          icon="account_tree"
+          title="Pick a company to begin"
+          message="Use the search box at the top of the page, or start from one of these holding companies." />
+        @let sug = suggestions$ | async;
+        @if (sug) {
+          <div class="suggestions">
+            @for (s of sug; track s.id) {
+              <button class="btn" (click)="select(s.id)">
+                <span class="material-symbols-outlined">apartment</span> {{ s.name }}
+              </button>
+            }
+          </div>
+        }
+      </div>
+    </section>
+  } @else {
+
+    <div class="toolbar card">
+      <div class="card-body">
+        <div class="row-between">
+          <div class="stack">
+            @let c = company$ | async;
+            @if (c?.data; as co) {
+              <div class="row">
+                <h2>{{ co.name }}</h2>
+                @if (co.secrecyHaven) {
+                  <span class="chip chip-violet">
+                    <span class="material-symbols-outlined">visibility_off</span>
+                    {{ co.jurisdictionName }}
+                  </span>
+                }
+              </div>
+              <span class="small muted mono">{{ co.companyId }}</span>
+            } @else if (c?.loading) {
+              <div class="skeleton" style="height:19px;width:210px"></div>
+            }
+          </div>
+
+          <div class="controls">
+            <span class="eyebrow">Depth</span>
+            @let d = selectedDepth$ | async;
+            @for (option of depths; track option) {
+              <button class="btn" [class.active]="d === option" (click)="setDepth(option)">
+                {{ option }}
+              </button>
+            }
+            @if (id) {
+              <button class="btn" (click)="openCompany(id)">
+                <span class="material-symbols-outlined">open_in_new</span> Details
+              </button>
+            }
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <section class="card graph-card">
+      @let g = graph$ | async;
+      @if (g?.loading) {
+        <div class="graph-loading">
+          <co-skeleton [count]="6" [height]="17" />
+          <p class="muted small" style="text-align:center;padding-bottom:20px">
+            Walking the ownership graph…
+          </p>
+        </div>
+      } @else if (g?.error) {
+        <co-error [message]="g!.error!" [retryable]="false" />
+      } @else if ((g?.data?.nodes?.length ?? 0) <= 1) {
+        <co-empty
+          icon="hub"
+          title="No ownership links at this depth"
+          message="This company has no recorded shareholders or subsidiaries within the selected depth. Try increasing it." />
+      } @else {
+        <co-graph-canvas [graph]="g!.data!" (nodeSelected)="onNode($event)" />
+        <div class="legend">
+          <span><i class="sw company"></i> Company</span>
+          <span><i class="sw person"></i> Individual</span>
+          <span><i class="sw focus"></i> Current company</span>
+          <span><i class="sw haven"></i> Low-disclosure jurisdiction</span>
+          <span class="muted">Arrows point from owner to the company owned. Labels are stakes.</span>
+        </div>
+      }
+    </section>
+  }
+</div>
