@@ -56,9 +56,11 @@ public class SeedRunner implements ApplicationRunner {
                 data.jurisdictions().size(), data.addresses().size(), data.people().size(),
                 data.companies().size(), data.ownerships().size(), data.directorships().size());
 
+        boolean force = args.containsOption("force") || args.getNonOptionArgs().contains("force");
+
         try (Session session = driver.session()) {
             createConstraints(session);
-            wipe(session);
+            wipe(session, force);
             loadJurisdictions(session, data);
             loadAddresses(session, data);
             loadPeople(session, data);
@@ -89,9 +91,23 @@ public class SeedRunner implements ApplicationRunner {
         log.info("Constraints and indexes ensured");
     }
 
-    private void wipe(Session session) {
-        session.executeWrite(tx -> tx.run("MATCH (n) DETACH DELETE n").consume());
-        log.info("Existing data cleared");
+    /**
+     * Seeding replaces the whole graph, so refuse to delete an existing dataset
+     * unless the caller asked for it explicitly with --force.
+     */
+    private void wipe(Session session, boolean force) {
+        long existing = session.executeRead(tx ->
+                tx.run("MATCH (n) RETURN count(n) AS total").single().get("total").asLong());
+
+        if (existing > 0 && !force) {
+            throw new IllegalStateException(
+                    "Database already holds %d nodes. Re-run with --seed --force to replace it."
+                            .formatted(existing));
+        }
+        if (existing > 0) {
+            session.executeWrite(tx -> tx.run("MATCH (n) DETACH DELETE n").consume());
+            log.info("Cleared {} existing nodes", existing);
+        }
     }
 
     private void loadJurisdictions(Session session, SeedData data) {

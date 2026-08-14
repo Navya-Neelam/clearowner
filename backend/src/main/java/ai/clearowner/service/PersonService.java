@@ -26,12 +26,18 @@ public class PersonService {
     }
 
     public List<Holding> holdings(String personId, int maxDepth, double threshold) {
-        detail(personId);
+        requireExists(personId);
         return people.holdings(personId, maxDepth, threshold, MAX_ROWS);
     }
 
     public List<Directorship> directorships(String personId) {
-        detail(personId);
+        requireExists(personId);
         return people.directorships(personId, MAX_ROWS);
+    }
+
+    private void requireExists(String personId) {
+        if (!people.exists(personId)) {
+            throw new NotFoundException("Person", personId);
+        }
     }
 }

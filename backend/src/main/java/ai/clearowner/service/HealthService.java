@@ -23,8 +23,11 @@ public class HealthService {
             session.run("RETURN 1").consume();
             return HealthResponse.up(System.currentTimeMillis() - start);
         } catch (Exception e) {
-            log.warn("CognoDB health check failed: {}", e.getMessage());
-            return HealthResponse.down(e.getClass().getSimpleName() + ": " + e.getMessage());
+            // The cause is logged for operators but not returned: /api/health is
+            // unauthenticated, and the driver's messages name the database host
+            // and the reason authentication failed.
+            log.warn("CognoDB health check failed", e);
+            return HealthResponse.down("The graph database is not reachable.");
         }
     }
 }

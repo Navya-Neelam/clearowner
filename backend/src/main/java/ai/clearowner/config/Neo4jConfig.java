@@ -10,8 +10,6 @@ import org.springframework.boot.context.properties.EnableConfigurationProperties
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
-import java.time.Duration;
-
 /**
  * Builds the single shared Driver. The driver is thread-safe and manages its own
  * connection pool, so one instance serves the whole application.

@@ -21,7 +21,6 @@ public class InsightService {
 
     public DashboardSummary summary() {
         Map<String, Long> counts = insights.counts();
-        List<CircularStructure> rings = insights.circularStructures(50);
         return new DashboardSummary(
                 counts.getOrDefault("companies", 0L),
                 counts.getOrDefault("people", 0L),
@@ -30,7 +29,7 @@ public class InsightService {
                 counts.getOrDefault("ownershipLinks", 0L),
                 counts.getOrDefault("directorships", 0L),
                 insights.secrecyHavenCompanies(),
-                rings.size(),
+                insights.circularStructureCount(),
                 insights.sharedAddresses(4, 5),
                 insights.topControllers(3, 5));
     }

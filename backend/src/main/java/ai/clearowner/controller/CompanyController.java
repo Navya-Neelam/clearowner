@@ -47,8 +47,9 @@ public class CompanyController {
     public List<BeneficialOwner> beneficialOwners(
             @PathVariable String companyId,
             @RequestParam(defaultValue = "6") @Min(1) @Max(8) int maxDepth,
-            @RequestParam(defaultValue = "25.0") @DecimalMin("0.0") @DecimalMax("100.0") double threshold) {
-        return companies.beneficialOwners(companyId, maxDepth, threshold);
+            @RequestParam(required = false) @DecimalMin("0.0") @DecimalMax("100.0") Double threshold) {
+        return companies.beneficialOwners(companyId, maxDepth,
+                threshold != null ? threshold : CompanyService.DEFAULT_THRESHOLD);
     }
 
     @GetMapping("/{companyId}/graph")

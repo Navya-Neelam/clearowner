@@ -11,7 +11,6 @@ import org.springframework.stereotype.Repository;
 
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
-import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -61,6 +60,21 @@ public class CompanyRepository {
                             r.get("subsidiaryCount").asInt(),
                             r.get("directorCount").asInt())))
                     .stream().findFirst();
+        }
+    }
+
+    /**
+     * A cheap existence check backed by the uniqueness constraint on companyId.
+     * The full detail query carries three COUNT subqueries, so it is the wrong
+     * tool for answering "should this be a 404?".
+     */
+    public boolean exists(String companyId) {
+        String cypher = "MATCH (c:Company {companyId: $companyId}) RETURN count(c) AS found";
+        try (var session = driver.session()) {
+            return session.executeRead(tx -> {
+                var rows = tx.run(cypher, Map.of("companyId", companyId)).list();
+                return !rows.isEmpty() && rows.get(0).get("found").asInt(0) > 0;
+            });
         }
     }
 

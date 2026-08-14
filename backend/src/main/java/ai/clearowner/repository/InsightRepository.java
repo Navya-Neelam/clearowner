@@ -47,6 +47,38 @@ public class InsightRepository {
         }
     }
 
+    /** Counts rings without building the ring objects, which the dashboard does not need. */
+    public long circularStructureCount() {
+        String twoWay = """
+                MATCH (a:Company)-[:OWNS]->(b:Company)-[:OWNS]->(z:Company)
+                WHERE z.companyId = a.companyId AND a.companyId < b.companyId
+                RETURN count(*) AS total
+                """;
+        String threeWay = """
+                MATCH (a:Company)-[:OWNS]->(b:Company)-[:OWNS]->(c:Company)-[:OWNS]->(z:Company)
+                WHERE z.companyId = a.companyId
+                  AND a.companyId < b.companyId AND a.companyId < c.companyId
+                RETURN count(*) AS total
+                """;
+        String fourWay = """
+                MATCH (a:Company)-[:OWNS]->(b:Company)-[:OWNS]->(c:Company)-[:OWNS]->(d:Company)-[:OWNS]->(z:Company)
+                WHERE z.companyId = a.companyId
+                  AND a.companyId < b.companyId AND a.companyId < c.companyId
+                  AND a.companyId < d.companyId
+                RETURN count(*) AS total
+                """;
+        try (var session = driver.session()) {
+            return session.executeRead(tx -> {
+                long total = 0;
+                for (String cypher : List.of(twoWay, threeWay, fourWay)) {
+                    var rows = tx.run(cypher).list();
+                    if (!rows.isEmpty()) total += rows.get(0).get("total").asLong(0);
+                }
+                return total;
+            });
+        }
+    }
+
     public long secrecyHavenCompanies() {
         try (var session = driver.session()) {
             return session.executeRead(tx -> tx.run(
@@ -80,14 +112,26 @@ public class InsightRepository {
                   AND a.companyId < b.companyId AND a.companyId < c.companyId
                 RETURN a.companyId AS aId, a.name AS aName, r1.percentage AS aPct,
                        b.companyId AS bId, b.name AS bName, r2.percentage AS bPct,
-                       c.companyId AS cId, c.name AS cName, r3.percentage AS cPct
+                       c.companyId AS cId, c.name AS cName, r3.percentage AS cPct,
+                       null AS dId, null AS dName, null AS dPct
+                LIMIT $limit
+                """;
+        String fourWay = """
+                MATCH (a:Company)-[r1:OWNS]->(b:Company)-[r2:OWNS]->(c:Company)-[r3:OWNS]->(d:Company)-[r4:OWNS]->(z:Company)
+                WHERE z.companyId = a.companyId
+                  AND a.companyId < b.companyId AND a.companyId < c.companyId
+                  AND a.companyId < d.companyId
+                RETURN a.companyId AS aId, a.name AS aName, r1.percentage AS aPct,
+                       b.companyId AS bId, b.name AS bName, r2.percentage AS bPct,
+                       c.companyId AS cId, c.name AS cName, r3.percentage AS cPct,
+                       d.companyId AS dId, d.name AS dName, r4.percentage AS dPct
                 LIMIT $limit
                 """;
 
         List<CircularStructure> out = new ArrayList<>();
         try (var session = driver.session()) {
             session.executeRead(tx -> {
-                for (String cypher : List.of(twoWay, threeWay)) {
+                for (String cypher : List.of(twoWay, threeWay, fourWay)) {
                     for (var r : tx.run(cypher, Map.of("limit", Values.value(limit))).list()) {
                         List<CircularStructure.Member> members = new ArrayList<>();
                         members.add(new CircularStructure.Member(
@@ -100,6 +144,11 @@ public class InsightRepository {
                             members.add(new CircularStructure.Member(
                                     r.get("cId").asString(), r.get("cName").asString(),
                                     Cypher.round2(r.get("cPct").asDouble(0))));
+                        }
+                        if (!r.get("dId").isNull()) {
+                            members.add(new CircularStructure.Member(
+                                    r.get("dId").asString(), r.get("dName").asString(),
+                                    Cypher.round2(r.get("dPct").asDouble(0))));
                         }
                         out.add(new CircularStructure(members.size(), members));
                     }

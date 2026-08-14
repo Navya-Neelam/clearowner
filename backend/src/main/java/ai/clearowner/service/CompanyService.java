@@ -101,7 +101,7 @@ public class CompanyService {
     }
 
     private void requireExists(String companyId) {
-        if (companies.findById(companyId).isEmpty()) {
+        if (!companies.exists(companyId)) {
             throw new NotFoundException("Company", companyId);
         }
     }

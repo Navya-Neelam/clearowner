@@ -21,6 +21,17 @@ public class PersonRepository {
         this.driver = driver;
     }
 
+    /** Cheap existence check, for the same reason as the company one. */
+    public boolean exists(String personId) {
+        String cypher = "MATCH (p:Person {personId: $personId}) RETURN count(p) AS found";
+        try (var session = driver.session()) {
+            return session.executeRead(tx -> {
+                var rows = tx.run(cypher, Map.of("personId", personId)).list();
+                return !rows.isEmpty() && rows.get(0).get("found").asInt(0) > 0;
+            });
+        }
+    }
+
     public Optional<PersonDetail> findById(String personId) {
         String cypher = """
                 MATCH (p:Person {personId: $personId})

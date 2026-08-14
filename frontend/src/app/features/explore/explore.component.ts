@@ -36,9 +36,7 @@ export class ExploreComponent {
   readonly selectedId$ = this.companyId$.asObservable();
 
   /** Suggested starting points so the screen is never an empty canvas. */
-  readonly suggestions$: Observable<SearchResult[]> = this.api.topControllers(3, 1).pipe(
-    switchMap(() => this.api.search('Holdings', 6)),
-  );
+  readonly suggestions$: Observable<SearchResult[]> = this.api.search('Holdings', 6);
 
   readonly company$: Observable<AsyncState<CompanyDetail>> = this.companyId$.pipe(
     filter((id) => !!id),
